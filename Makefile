@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -lglut -lGLU -lGL -lm
+CFLAGS = -g -Iinclude -lglut -lGLU -lGL -lm
 
 ODIR = src/obj
 SDIR = src

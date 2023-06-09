@@ -8,14 +8,26 @@
 - Processo impressor: retira 1 resultado, realiza o print na tela
 - Possibilitar alterar a complexidade de cores e número de processos trabalhadores
 
-## Compiling and running
+## Usage
+
+Dependencies:
+- `freeglut3-dev` (Ubuntu) `freeglut-devel` (Fedora)
 
 ```sh
 $ make
 $ ./fractal
 ```
 
----
+## Developing
+
+Dev-dependencies:
+- `bear`
+
+Before starting development, you should generate a `compile_commands.json` so linters can identify the include directory and build flags.
+
+```sh
+$ make clean; bear -- make
+```
 
 ## References:
 - https://physicspython.wordpress.com/2020/02/16/visualizing-the-mandelbrot-set-using-opengl-part-1/
