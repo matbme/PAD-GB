@@ -1,9 +1,4 @@
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glut.h>
-#include <stdio.h>
-
-#include "types.h"
+#include "controls.h"
 
 void keypress_handler(
     GLConfig *conf, unsigned char key, int x, int y, void set_texture(), void screen_dump()) {
@@ -71,4 +66,25 @@ void keypress_handler(
         set_texture();
         break;
     }
+}
+
+void mouseclick_handler(GLConfig *conf, int button, int state, int x, int y, void set_texture()) {
+    if (state != GLUT_UP)
+        return;
+
+    conf->cx += (x - conf->width / 2) * conf->scale;
+    conf->cy -= (y - conf->height / 2) * conf->scale;
+
+    switch (button) {
+    case GLUT_LEFT_BUTTON: /* zoom in */
+        if (conf->scale > fabs((double)x) * 1e-16 && conf->scale > fabs((double)y) * 1e-16)
+            conf->scale /= 2;
+        break;
+    case GLUT_RIGHT_BUTTON: /* zoom out */
+        conf->scale *= 2;
+        break;
+        /* any other button recenters */
+    }
+
+    set_texture();
 }
