@@ -4,5 +4,4 @@ IndentWidth: 4
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: Consecutive
 BinPackParameters: false
-ColumnLimit: 100
 ...

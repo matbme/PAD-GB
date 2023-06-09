@@ -3,7 +3,8 @@
 void calc_mandel(GLConfig *conf) {
     int i, j, iter, min, max;
     double x, y, zx, zy, zx2, zy2;
-    unsigned short *hsv = malloc(conf->width * conf->height * sizeof(unsigned short));
+    unsigned short *hsv =
+        malloc(conf->width * conf->height * sizeof(unsigned short));
 
     min = conf->max_iter;
     max = 0;
@@ -62,7 +63,8 @@ void hsv_to_rgba(GLConfig *conf, int hue, int min, int max, unsigned char *px) {
         g = r;
         b = r;
     } else {
-        double h = fmod(conf->color_rotate + 1e-4 + 4.0 * (hue - min) / (max - min), 6);
+        double h = fmod(
+            conf->color_rotate + 1e-4 + 4.0 * (hue - min) / (max - min), 6);
         double c = VAL * conf->saturation;
         double X = c * (1 - fabs(fmod(h, 2) - 1));
 

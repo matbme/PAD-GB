@@ -14,16 +14,17 @@ void set_texture();
 void mouseclick(int button, int state, int x, int y);
 void keypress(unsigned char key, int x, int y);
 
+int dump = 1;
+int old_width, old_height;
+
 GLConfig conf = {.tex          = NULL,
-                 .scale        = 1. / 256,
+                 .scale        = 1. / 512,
                  .cx           = -.6,
                  .cy           = 0,
                  .color_rotate = 0,
                  .saturation   = 1,
                  .invert       = 0,
                  .max_iter     = 256};
-
-int old_width, old_height;
 
 void render() {
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
@@ -47,7 +48,6 @@ void render() {
     glFinish();
 }
 
-int dump = 1;
 void screen_dump() {
     char fn[100];
     sprintf(fn, "screen%03d.ppm", dump++);
@@ -63,10 +63,12 @@ void screen_dump() {
 }
 
 void alloc_tex() {
-    if (conf.tex == NULL || conf.width != old_width || conf.height != old_height) {
+    if (conf.tex == NULL || conf.width != old_width ||
+        conf.height != old_height) {
         free(conf.tex);
         conf.tex = malloc(conf.height * conf.width * 4 * sizeof(unsigned char));
-        memset(conf.tex, 0, conf.height * conf.width * 4 * sizeof(unsigned char));
+        memset(conf.tex, 0,
+               conf.height * conf.width * 4 * sizeof(unsigned char));
         old_width  = conf.width;
         old_height = conf.height;
     }
@@ -78,8 +80,8 @@ void set_texture() {
 
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, conf.texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, conf.width, conf.height, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                 conf.tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, conf.width, conf.height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, conf.tex);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -110,7 +112,7 @@ void resize(int w, int h) {
 void init_gfx(GLConfig *conf, int *c, char **v) {
     glutInit(c, v);
     glutInitDisplayMode(GLUT_RGBA);
-    glutInitWindowSize(640, 480);
+    glutInitWindowSize(1280, 900);
 
     conf->gwin = glutCreateWindow("Mandelbrot");
     glutDisplayFunc(render);
@@ -125,7 +127,8 @@ void init_gfx(GLConfig *conf, int *c, char **v) {
 int main(int argc, char **argv) {
     init_gfx(&conf, &argc, argv);
     printf("keys:\n\tr: color rotation\n\tc: monochrome\n\ts: screen dump\n\t"
-           "<, >: decrease/increase max iteration\n\tq: quit\n\tmouse buttons to zoom\n");
+           "<, >: decrease/increase max iteration\n\tq: quit\n\tmouse buttons "
+           "to zoom\n");
 
     glutMainLoop();
     return 0;

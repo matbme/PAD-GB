@@ -1,7 +1,11 @@
 #include "controls.h"
 
-void keypress_handler(
-    GLConfig *conf, unsigned char key, int x, int y, void set_texture(), void screen_dump()) {
+void keypress_handler(GLConfig *conf,
+                      unsigned char key,
+                      int x,
+                      int y,
+                      void set_texture(),
+                      void screen_dump()) {
     switch (key) {
     case 'q':
         glFinish();
@@ -68,7 +72,8 @@ void keypress_handler(
     }
 }
 
-void mouseclick_handler(GLConfig *conf, int button, int state, int x, int y, void set_texture()) {
+void mouseclick_handler(
+    GLConfig *conf, int button, int state, int x, int y, void set_texture()) {
     if (state != GLUT_UP)
         return;
 
@@ -77,7 +82,8 @@ void mouseclick_handler(GLConfig *conf, int button, int state, int x, int y, voi
 
     switch (button) {
     case GLUT_LEFT_BUTTON: /* zoom in */
-        if (conf->scale > fabs((double)x) * 1e-16 && conf->scale > fabs((double)y) * 1e-16)
+        if (conf->scale > fabs((double)x) * 1e-16 &&
+            conf->scale > fabs((double)y) * 1e-16)
             conf->scale /= 2;
         break;
     case GLUT_RIGHT_BUTTON: /* zoom out */
