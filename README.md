@@ -8,7 +8,16 @@
 - Processo impressor: retira 1 resultado, realiza o print na tela
 - Possibilitar alterar a complexidade de cores e número de processos trabalhadores
 
-### References:
+## Compiling and running
+
+```sh
+$ make
+$ ./fractal
+```
+
+---
+
+## References:
 - https://physicspython.wordpress.com/2020/02/16/visualizing-the-mandelbrot-set-using-opengl-part-1/
 - https://www.brennengreen.dev/blog/posts/1/
 - https://github.com/gendestry/Mandelbrot
