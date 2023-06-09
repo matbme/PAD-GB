@@ -23,3 +23,7 @@ $ ./fractal
 - https://github.com/gendestry/Mandelbrot
 - http://nuclear.mutantstargoat.com/articles/sdr_fract/
 - https://mathworld.wolfram.com/MandelbrotSet.html
+
+## Credits
+
+- Mandelbrot fractal code obtained from [Rosetta Code](https://rosettacode.org/wiki/Mandelbrot_set)
