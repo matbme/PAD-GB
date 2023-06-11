@@ -2,6 +2,7 @@
 #include <GL/glu.h>
 #include <GL/glut.h>
 #include <math.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,12 +11,16 @@
 #include "controls.h"
 #include "types.h"
 
+#define THREADS 2
+
 void set_texture();
 void mouseclick(int button, int state, int x, int y);
 void keypress(unsigned char key, int x, int y);
 
 int dump = 1;
 int old_width, old_height;
+
+pthread_mutex_t mutex;
 
 GLConfig conf = {.tex          = NULL,
                  .scale        = 1. / 512,
@@ -69,6 +74,7 @@ void alloc_tex() {
         conf.tex = malloc(conf.height * conf.width * 4 * sizeof(unsigned char));
         memset(conf.tex, 0,
                conf.height * conf.width * 4 * sizeof(unsigned char));
+        printf("Tex new size: %d\n", conf.height * conf.width * 4);
         old_width  = conf.width;
         old_height = conf.height;
     }
@@ -76,7 +82,30 @@ void alloc_tex() {
 
 void set_texture() {
     alloc_tex();
-    calc_mandel(&conf);
+
+    if (conf.width == 0 || conf.height == 0)
+        return;
+
+    int block_width  = floor(conf.width / (float)THREADS);
+    int block_height = floor(conf.height / (float)THREADS);
+
+    pthread_t thrids[THREADS]        = {};
+    struct mandel_args args[THREADS] = {};
+    for (int i = 0; i < THREADS; i++) {
+        for (int j = 0; j < THREADS; j++) {
+            args[j].conf  = &conf;
+            args[j].xmin  = block_width * i;
+            args[j].xmax  = block_width * (i + 1) - 1;
+            args[j].ymin  = block_height * j;
+            args[j].ymax  = block_height * (j + 1) - 1;
+            args[j].mutex = &mutex;
+
+            pthread_create(&thrids[j], NULL, (void *)calc_mandel, &args[j]);
+        }
+
+        for (int t = 0; t < THREADS; t++)
+            pthread_join(thrids[t], NULL);
+    }
 
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, conf.texture);
@@ -125,6 +154,8 @@ void init_gfx(GLConfig *conf, int *c, char **v) {
 }
 
 int main(int argc, char **argv) {
+    pthread_mutex_init(&mutex, NULL);
+
     init_gfx(&conf, &argc, argv);
     printf("keys:\n\tr: color rotation\n\tc: monochrome\n\ts: screen dump\n\t"
            "<, >: decrease/increase max iteration\n\tq: quit\n\tmouse buttons "

@@ -9,12 +9,21 @@ typedef struct _GLConfig {
     GLuint texture;
     int width, height;
     double scale;
-    double cx;
-    double cy;
+    double cx, cy;
     int color_rotate;
     int saturation;
     int invert;
     int max_iter;
 } GLConfig;
+
+typedef struct _ThreadConfig {
+    int max_threads;
+    /* TODO: Render strategy:
+     *   - Squares with same size
+     *   - Squares with fixed size
+     *   - Lines
+     *   - As whole image (calculate in parallel, display all at once)
+    */
+} ThreadConfig;
 
 #endif

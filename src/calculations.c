@@ -1,23 +1,38 @@
 #include "calculations.h"
+#include <stdio.h>
 
-void calc_mandel(GLConfig *conf) {
-    int i, j, iter, min, max;
+void calc_mandel(struct mandel_args *args) {
+    GLConfig *conf         = args->conf;
+    int xmin               = args->xmin;
+    int xmax               = args->xmax;
+    int ymin               = args->ymin;
+    int ymax               = args->ymax;
+    pthread_mutex_t *mutex = args->mutex;
+
+    printf("Starting to calculate block:\n\txmin = %d, xmax = %d\n\tymin = %d, "
+           "ymax = %d\n",
+           xmin, xmax, ymin, ymax);
+
+    int iter, min, max;
     double x, y, zx, zy, zx2, zy2;
-    unsigned short *hsv =
-        malloc(conf->width * conf->height * sizeof(unsigned short));
+
+    int width  = xmax - xmin + 1;
+    int height = ymax - ymin + 1;
+
+    unsigned short *hsv = malloc(width * height * sizeof(unsigned short));
 
     min = conf->max_iter;
     max = 0;
-    for (i = 0; i < conf->height; i++) {
-        y = (i - conf->height / 2) * conf->scale + conf->cy;
-        for (j = 0; j < conf->width; j++) {
-            x    = (j - conf->width / 2) * conf->scale + conf->cx;
+    for (int i = ymin; i < ymax + 1; i++) {
+        y = (i - (float)height / 2) * conf->scale + conf->cy;
+        for (int j = xmin; j < xmax + 1; j++) {
+            x    = (j - (float)width / 2) * conf->scale + conf->cx;
             iter = 0;
 
             zx = hypot(x - .25, y);
             if (x < zx - 2 * zx * zx + .25)
                 iter = conf->max_iter;
-            if ((x + 1) * (x + 1) + y * y < 1 / 16)
+            if ((x + 1) * (x + 1) + y * y < 1. / 16)
                 iter = conf->max_iter;
 
             zx  = 0;
@@ -31,20 +46,28 @@ void calc_mandel(GLConfig *conf) {
                 zy2 = zy * zy;
                 iter += 1;
             }
-            if (iter < min)
-                min = iter;
-            if (iter > max)
-                max = iter;
-            hsv[(i * conf->width) + j] = iter;
+            /* if (iter < min) */
+            /*     min = iter; */
+            /* if (iter > max) */
+            /*     max = iter; */
+
+            hsv[((i - ymin) * width) + (j - xmin)] = iter;
         }
     }
 
-    for (i = 0; i < conf->height; i += 1) {
-        for (j = 0; j < conf->width; j += 1) {
-            unsigned char *px = conf->tex + (((i * conf->width) + j) * 4);
-            hsv_to_rgba(conf, hsv[(i * conf->width) + j], min, max, px);
+    pthread_mutex_lock(mutex);
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            int offset = (conf->width * (i + ymin)) + xmin + j;
+            unsigned char *px = conf->tex + (offset * 4);
+            hsv_to_rgba(conf, hsv[(i * width) + j], min, max, px);
         }
     }
+    pthread_mutex_unlock(mutex);
+
+    printf("Finished block:\n\txmin = %d, xmax = %d\n\tymin = %d, "
+           "ymax = %d\n",
+           xmin, xmax, ymin, ymax);
 
     free(hsv);
 }
