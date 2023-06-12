@@ -8,10 +8,6 @@ void calc_mandel(struct mandel_args *args) {
     int xmax                   = args->xmax;
     int ymin                   = args->ymin;
     int ymax                   = args->ymax;
-    int *global_min            = args->global_min;
-    int *global_max            = args->global_max;
-    pthread_mutex_t *mutex     = args->mutex;
-    pthread_barrier_t *barrier = args->barrier;
 
     printf("Starting to calculate block:\n\txmin = %d, xmax = %d\n\tymin = %d, "
            "ymax = %d\n",
@@ -25,8 +21,6 @@ void calc_mandel(struct mandel_args *args) {
 
     unsigned short *hsv = malloc(width * height * sizeof(unsigned short));
 
-    min = conf->max_iter;
-    max = 0;
     for (int i = ymin; i < ymax + 1; i++) {
         y = (i - (float)height / 2) * conf->scale + conf->cy;
         for (int j = xmin; j < xmax + 1; j++) {
@@ -50,29 +44,16 @@ void calc_mandel(struct mandel_args *args) {
                 zy2 = zy * zy;
                 iter += 1;
             }
-            if (iter < min)
-                min = iter;
-            if (iter > max)
-                max = iter;
 
             hsv[((i - ymin) * width) + (j - xmin)] = iter;
         }
     }
 
-    pthread_mutex_lock(mutex);
-    if (min < *global_min)
-        *global_min = min;
-    if (max > *global_max)
-        *global_max = max;
-    pthread_mutex_unlock(mutex);
-
-    pthread_barrier_wait(barrier);
-
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             int offset        = (conf->width * (i + ymin)) + xmin + j;
             unsigned char *px = conf->tex + (offset * 4);
-            hsv_to_rgba(conf, hsv[(i * width) + j], *global_min, *global_max,
+            hsv_to_rgba(conf, hsv[(i * width) + j], 0, conf->max_iter,
                         px);
         }
     }

@@ -13,7 +13,7 @@ void keypress_handler(GLConfig *conf,
         break;
 
     case 27: // ESC
-        conf->scale = 1. / 256;
+        conf->scale = 1. / 512;
         conf->cx    = -.6;
         conf->cy    = 0;
         set_texture();

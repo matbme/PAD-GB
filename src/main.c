@@ -12,7 +12,7 @@
 #include "controls.h"
 #include "types.h"
 
-#define THREADS 2
+#define THREADS 8
 
 void set_texture();
 void mouseclick(int button, int state, int x, int y);
@@ -88,38 +88,22 @@ void set_texture() {
     int block_width  = floor(conf.width / (float)THREADS);
     int block_height = floor(conf.height / (float)THREADS);
 
-    int global_min = INT_MAX;
-    int global_max = INT_MIN;
-
     pthread_t thrids[THREADS]        = {};
     struct mandel_args args[THREADS] = {};
     for (int i = 0; i < THREADS; i++) {
-        pthread_barrier_t barrier;
-        pthread_mutex_t mutex;
-
-        pthread_barrier_init(&barrier, NULL, THREADS);
-        pthread_mutex_init(&mutex, NULL);
-
         for (int j = 0; j < THREADS; j++) {
             args[j].conf  = &conf;
             args[j].xmin  = block_width * i;
             args[j].xmax  = block_width * (i + 1) - 1;
             args[j].ymin  = block_height * j;
             args[j].ymax  = block_height * (j + 1) - 1;
-            args[j].global_min = &global_min;
-            args[j].global_max = &global_max;
-            args[j].barrier = &barrier;
-            args[j].mutex = &mutex;
 
             pthread_create(&thrids[j], NULL, (void *)calc_mandel, &args[j]);
         }
 
         for (int t = 0; t < THREADS; t++)
             pthread_join(thrids[t], NULL);
-
-        pthread_barrier_destroy(&barrier);
     }
-
 
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, conf.texture);
