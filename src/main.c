@@ -1,6 +1,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
+#include <limits.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -19,8 +20,6 @@ void keypress(unsigned char key, int x, int y);
 
 int dump = 1;
 int old_width, old_height;
-
-pthread_mutex_t mutex;
 
 GLConfig conf = {.tex          = NULL,
                  .scale        = 1. / 512,
@@ -89,15 +88,27 @@ void set_texture() {
     int block_width  = floor(conf.width / (float)THREADS);
     int block_height = floor(conf.height / (float)THREADS);
 
+    int global_min = INT_MAX;
+    int global_max = INT_MIN;
+
     pthread_t thrids[THREADS]        = {};
     struct mandel_args args[THREADS] = {};
     for (int i = 0; i < THREADS; i++) {
+        pthread_barrier_t barrier;
+        pthread_mutex_t mutex;
+
+        pthread_barrier_init(&barrier, NULL, THREADS);
+        pthread_mutex_init(&mutex, NULL);
+
         for (int j = 0; j < THREADS; j++) {
             args[j].conf  = &conf;
             args[j].xmin  = block_width * i;
             args[j].xmax  = block_width * (i + 1) - 1;
             args[j].ymin  = block_height * j;
             args[j].ymax  = block_height * (j + 1) - 1;
+            args[j].global_min = &global_min;
+            args[j].global_max = &global_max;
+            args[j].barrier = &barrier;
             args[j].mutex = &mutex;
 
             pthread_create(&thrids[j], NULL, (void *)calc_mandel, &args[j]);
@@ -105,7 +116,10 @@ void set_texture() {
 
         for (int t = 0; t < THREADS; t++)
             pthread_join(thrids[t], NULL);
+
+        pthread_barrier_destroy(&barrier);
     }
+
 
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, conf.texture);
@@ -154,8 +168,6 @@ void init_gfx(GLConfig *conf, int *c, char **v) {
 }
 
 int main(int argc, char **argv) {
-    pthread_mutex_init(&mutex, NULL);
-
     init_gfx(&conf, &argc, argv);
     printf("keys:\n\tr: color rotation\n\tc: monochrome\n\ts: screen dump\n\t"
            "<, >: decrease/increase max iteration\n\tq: quit\n\tmouse buttons "

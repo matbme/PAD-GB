@@ -13,6 +13,8 @@ struct mandel_args {
     GLConfig *conf;
     int xmin, xmax;
     int ymin, ymax;
+    int *global_min, *global_max;
+    pthread_barrier_t *barrier;
     pthread_mutex_t *mutex;
 };
 

@@ -1,13 +1,17 @@
 #include "calculations.h"
+#include <pthread.h>
 #include <stdio.h>
 
 void calc_mandel(struct mandel_args *args) {
-    GLConfig *conf         = args->conf;
-    int xmin               = args->xmin;
-    int xmax               = args->xmax;
-    int ymin               = args->ymin;
-    int ymax               = args->ymax;
-    pthread_mutex_t *mutex = args->mutex;
+    GLConfig *conf             = args->conf;
+    int xmin                   = args->xmin;
+    int xmax                   = args->xmax;
+    int ymin                   = args->ymin;
+    int ymax                   = args->ymax;
+    int *global_min            = args->global_min;
+    int *global_max            = args->global_max;
+    pthread_mutex_t *mutex     = args->mutex;
+    pthread_barrier_t *barrier = args->barrier;
 
     printf("Starting to calculate block:\n\txmin = %d, xmax = %d\n\tymin = %d, "
            "ymax = %d\n",
@@ -46,24 +50,32 @@ void calc_mandel(struct mandel_args *args) {
                 zy2 = zy * zy;
                 iter += 1;
             }
-            /* if (iter < min) */
-            /*     min = iter; */
-            /* if (iter > max) */
-            /*     max = iter; */
+            if (iter < min)
+                min = iter;
+            if (iter > max)
+                max = iter;
 
             hsv[((i - ymin) * width) + (j - xmin)] = iter;
         }
     }
 
     pthread_mutex_lock(mutex);
+    if (min < *global_min)
+        *global_min = min;
+    if (max > *global_max)
+        *global_max = max;
+    pthread_mutex_unlock(mutex);
+
+    pthread_barrier_wait(barrier);
+
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            int offset = (conf->width * (i + ymin)) + xmin + j;
+            int offset        = (conf->width * (i + ymin)) + xmin + j;
             unsigned char *px = conf->tex + (offset * 4);
-            hsv_to_rgba(conf, hsv[(i * width) + j], min, max, px);
+            hsv_to_rgba(conf, hsv[(i * width) + j], *global_min, *global_max,
+                        px);
         }
     }
-    pthread_mutex_unlock(mutex);
 
     printf("Finished block:\n\txmin = %d, xmax = %d\n\tymin = %d, "
            "ymax = %d\n",
