@@ -17,6 +17,7 @@ void draw_texture(
     unsigned char *tex, int x_start, int x_end, int y_start, int y_end);
 void mouseclick(int button, int state, int x, int y);
 void keypress(unsigned char key, int x, int y);
+void special_keypress(int key, int x, int y);
 
 int old_width, old_height;
 
@@ -24,9 +25,9 @@ pthread_mutex_t mutex;
 pthread_cond_t result_done;
 pthread_mutex_t result_mutex;
 
-GLConfig conf = {.scale        = 1. / 512,
-                 .cx           = -.6,
-                 .cy           = 0,
+GLConfig conf = {.scale        = 1. / 256,
+                 .cx           = -2.9,
+                 .cy           = -1.5,
                  .color_rotate = 0,
                  .saturation   = 1,
                  .invert       = 0,
@@ -128,6 +129,10 @@ void keypress(unsigned char key, int x, int y) {
     keypress_handler(&conf, key, x, y, set_texture);
 }
 
+void special_keypress(int key, int x, int y) {
+    keypress_handler(&conf, (unsigned char)key, x, y, set_texture);
+}
+
 void mouseclick(int button, int state, int x, int y) {
     mouseclick_handler(&conf, button, state, x, y, set_texture);
 }
@@ -153,6 +158,7 @@ void init_gfx(GLConfig *conf, int *c, char **v) {
     glutDisplayFunc(render);
 
     glutKeyboardFunc(keypress);
+    glutSpecialFunc(special_keypress);
     glutMouseFunc(mouseclick);
     glutReshapeFunc(resize);
     glGenTextures(1, &conf->texture);

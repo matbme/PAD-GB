@@ -9,9 +9,9 @@ void keypress_handler(
         break;
 
     case 27: // ESC
-        conf->scale = 1. / 512;
-        conf->cx    = -.6;
-        conf->cy    = 0;
+        conf->scale = 1. / 256;
+        conf->cx    = -2.9;
+        conf->cy    = -1.5;
         set_texture();
         break;
 
@@ -53,6 +53,26 @@ void keypress_handler(
         set_texture();
         break;
 
+    case GLUT_KEY_LEFT: /* left */
+        conf->cx -= 30 * conf->scale;
+        set_texture();
+        break;
+
+    case GLUT_KEY_UP: /* up */
+        conf->cy += 30 * conf->scale;
+        set_texture();
+        break;
+
+    case GLUT_KEY_RIGHT: /* right */
+        conf->cx += 30 * conf->scale;
+        set_texture();
+        break;
+
+    case GLUT_KEY_DOWN: /* down */
+        conf->cy -= 30 * conf->scale;
+        set_texture();
+        break;
+
     case ' ':
         conf->invert = !conf->invert;
         set_texture();
@@ -69,8 +89,8 @@ void mouseclick_handler(
     if (state != GLUT_UP)
         return;
 
-    conf->cx += (x - conf->width / 2) * conf->scale;
-    conf->cy -= (y - conf->height / 2) * conf->scale;
+    conf->cx += (x - conf->width / 2.) * conf->scale;
+    conf->cy -= (y - conf->height / 2.) * conf->scale;
 
     switch (button) {
     case GLUT_LEFT_BUTTON: /* zoom in */
