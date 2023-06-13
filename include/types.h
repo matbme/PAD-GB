@@ -4,10 +4,11 @@
 #include <GL/gl.h>
 
 typedef struct _GLConfig {
-    unsigned char *tex;
     int gwin;
     GLuint texture;
     int width, height;
+    int x_start, x_end;
+    int y_start, y_end;
     double scale;
     double cx, cy;
     int color_rotate;
@@ -16,6 +17,15 @@ typedef struct _GLConfig {
     int max_iter;
 } GLConfig;
 
+typedef struct _WorkQueue {
+    struct _WorkQueue *next;
+    void *c;
+} WorkQueue;
+
+WorkQueue *workQueue_new();
+void workQueue_push(WorkQueue *wq, void *restrict val);
+void *restrict workQueue_pop(WorkQueue **wq);
+
 typedef struct _ThreadConfig {
     int max_threads;
     /* TODO: Render strategy:
@@ -23,7 +33,7 @@ typedef struct _ThreadConfig {
      *   - Squares with fixed size
      *   - Lines
      *   - As whole image (calculate in parallel, display all at once)
-    */
+     */
 } ThreadConfig;
 
 #endif

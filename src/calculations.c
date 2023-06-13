@@ -1,68 +1,92 @@
 #include "calculations.h"
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-void calc_mandel(struct mandel_args *args) {
-    GLConfig *conf             = args->conf;
-    int xmin                   = args->xmin;
-    int xmax                   = args->xmax;
-    int ymin                   = args->ymin;
-    int ymax                   = args->ymax;
+void calc_mandel(struct thread_args *args) {
+    GLConfig *conf = args->conf;
 
-    printf("Starting to calculate block:\n\txmin = %d, xmax = %d\n\tymin = %d, "
-           "ymax = %d\n",
-           xmin, xmax, ymin, ymax);
-
-    int iter, min, max;
-    double x, y, zx, zy, zx2, zy2;
-
-    int width  = xmax - xmin + 1;
-    int height = ymax - ymin + 1;
-
-    unsigned short *hsv = malloc(width * height * sizeof(unsigned short));
-
-    for (int i = ymin; i < ymax + 1; i++) {
-        y = (i - (float)height / 2) * conf->scale + conf->cy;
-        for (int j = xmin; j < xmax + 1; j++) {
-            x    = (j - (float)width / 2) * conf->scale + conf->cx;
-            iter = 0;
-
-            zx = hypot(x - .25, y);
-            if (x < zx - 2 * zx * zx + .25)
-                iter = conf->max_iter;
-            if ((x + 1) * (x + 1) + y * y < 1. / 16)
-                iter = conf->max_iter;
-
-            zx  = 0;
-            zy  = 0;
-            zx2 = 0;
-            zy2 = 0;
-            while (iter < conf->max_iter && zx2 + zy2 < 4) {
-                zy  = 2 * zx * zy + y;
-                zx  = zx2 - zy2 + x;
-                zx2 = zx * zx;
-                zy2 = zy * zy;
-                iter += 1;
+    while (1) {
+        struct task *task = malloc(sizeof(struct task));
+        int found_task            = 0;
+        pthread_mutex_lock(args->mutex);
+        for (int i = 0; i < args->total_tasks; i++) {
+            if (IS_TASK(args->tasks[i])) {
+                memcpy(task, &args->tasks[i], sizeof(struct task));
+                CLEAR_TASK(args->tasks[i]);
+                found_task = 1;
+                break;
             }
-
-            hsv[((i - ymin) * width) + (j - xmin)] = iter;
         }
-    }
+        pthread_mutex_unlock(args->mutex);
 
-    for (int i = 0; i < height; i++) {
-        for (int j = 0; j < width; j++) {
-            int offset        = (conf->width * (i + ymin)) + xmin + j;
-            unsigned char *px = conf->tex + (offset * 4);
-            hsv_to_rgba(conf, hsv[(i * width) + j], 0, conf->max_iter,
-                        px);
+        if (!found_task) /* We're done */
+            pthread_exit(0);
+
+        int xmin = task->xmin;
+        int xmax = task->xmax;
+        int ymin = task->ymin;
+        int ymax = task->ymax;
+
+        int iter, min, max;
+        double x, y, zx, zy, zx2, zy2;
+
+        int width  = xmax - xmin + 1;
+        int height = ymax - ymin + 1;
+
+        unsigned short *hsv = malloc(width * height * sizeof(unsigned short));
+
+        for (int i = ymin; i < ymax + 1; i++) {
+            y = (i - (float)height / 2) * conf->scale + conf->cy;
+            for (int j = xmin; j < xmax + 1; j++) {
+                x    = (j - (float)width / 2) * conf->scale + conf->cx;
+                iter = 0;
+
+                zx = hypot(x - .25, y);
+                if (x < zx - 2 * zx * zx + .25)
+                    iter = conf->max_iter;
+                if ((x + 1) * (x + 1) + y * y < 1. / 16)
+                    iter = conf->max_iter;
+
+                zx  = 0;
+                zy  = 0;
+                zx2 = 0;
+                zy2 = 0;
+                while (iter < conf->max_iter && zx2 + zy2 < 4) {
+                    zy  = 2 * zx * zy + y;
+                    zx  = zx2 - zy2 + x;
+                    zx2 = zx * zx;
+                    zy2 = zy * zy;
+                    iter += 1;
+                }
+
+                hsv[((i - ymin) * width) + (j - xmin)] = iter;
+            }
         }
+
+        unsigned char *ltex = calloc(width * height * 4, sizeof(unsigned char));
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                unsigned char *px = ltex + (((i * width) + j) * 4);
+                hsv_to_rgba(conf, hsv[(i * width) + j], 0, conf->max_iter, px);
+            }
+        }
+
+        struct result *result = malloc(sizeof(struct result));
+        result->tex                  = ltex;
+        result->xmin                 = task->xmin;
+        result->xmax                 = task->xmax;
+        result->ymin                 = task->ymin;
+        result->ymax                 = task->ymax;
+        pthread_mutex_lock(args->result_mutex);
+        workQueue_push(*args->wq, result);
+        pthread_cond_signal(args->done);
+        pthread_mutex_unlock(args->result_mutex);
+
+        free(task);
+        free(hsv);
     }
-
-    printf("Finished block:\n\txmin = %d, xmax = %d\n\tymin = %d, "
-           "ymax = %d\n",
-           xmin, xmax, ymin, ymax);
-
-    free(hsv);
 }
 
 void hsv_to_rgba(GLConfig *conf, int hue, int min, int max, unsigned char *px) {

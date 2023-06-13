@@ -1,11 +1,7 @@
 #include "controls.h"
 
-void keypress_handler(GLConfig *conf,
-                      unsigned char key,
-                      int x,
-                      int y,
-                      void set_texture(),
-                      void screen_dump()) {
+void keypress_handler(
+    GLConfig *conf, unsigned char key, int x, int y, void set_texture()) {
     switch (key) {
     case 'q':
         glFinish();
@@ -45,10 +41,6 @@ void keypress_handler(GLConfig *conf,
     case 'c':
         conf->saturation = 1 - conf->saturation;
         set_texture();
-        break;
-
-    case 's':
-        screen_dump();
         break;
 
     case 'z':

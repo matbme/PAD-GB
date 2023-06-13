@@ -1,12 +1,9 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
-#include <limits.h>
-#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "calculations.h"
 #include "controls.h"
@@ -14,15 +11,20 @@
 
 #define THREADS 8
 
+void render();
 void set_texture();
+void draw_texture(
+    unsigned char *tex, int x_start, int x_end, int y_start, int y_end);
 void mouseclick(int button, int state, int x, int y);
 void keypress(unsigned char key, int x, int y);
 
-int dump = 1;
 int old_width, old_height;
 
-GLConfig conf = {.tex          = NULL,
-                 .scale        = 1. / 512,
+pthread_mutex_t mutex;
+pthread_cond_t result_done;
+pthread_mutex_t result_mutex;
+
+GLConfig conf = {.scale        = 1. / 512,
                  .cx           = -.6,
                  .cy           = 0,
                  .color_rotate = 0,
@@ -38,13 +40,13 @@ void render() {
     glBegin(GL_QUADS);
 
     glTexCoord2d(0, 0);
-    glVertex2i(0, 0);
+    glVertex2i(conf.x_start, conf.y_start);
     glTexCoord2d(1, 0);
-    glVertex2i(conf.width, 0);
+    glVertex2i(conf.x_end, conf.y_start);
     glTexCoord2d(1, 1);
-    glVertex2i(conf.width, conf.height);
+    glVertex2i(conf.x_end, conf.y_end);
     glTexCoord2d(0, 1);
-    glVertex2i(0, conf.height);
+    glVertex2i(conf.x_start, conf.y_end);
 
     glEnd();
 
@@ -52,72 +54,78 @@ void render() {
     glFinish();
 }
 
-void screen_dump() {
-    char fn[100];
-    sprintf(fn, "screen%03d.ppm", dump++);
-    FILE *fp = fopen(fn, "w");
-    fprintf(fp, "P6\n%d %d\n255\n", conf.width, conf.height);
-    for (int i = conf.height - 1; i >= 0; i -= 1) {
-        for (int j = 0; j < conf.width; j += 1) {
-            fwrite(&conf.tex[((i * conf.width) + j) * 4], 1, 3, fp);
-        }
-    }
-    fclose(fp);
-    printf("%s written\n", fn);
-}
+void draw_texture(
+    unsigned char *tex, int x_start, int x_end, int y_start, int y_end) {
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, conf.texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x_end - x_start + 1,
+                 y_end - y_start + 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex);
 
-void alloc_tex() {
-    if (conf.tex == NULL || conf.width != old_width ||
-        conf.height != old_height) {
-        free(conf.tex);
-        conf.tex = malloc(conf.height * conf.width * 4 * sizeof(unsigned char));
-        memset(conf.tex, 0,
-               conf.height * conf.width * 4 * sizeof(unsigned char));
-        printf("Tex new size: %d\n", conf.height * conf.width * 4);
-        old_width  = conf.width;
-        old_height = conf.height;
-    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glEnable(GL_TEXTURE_2D);
+
+    conf.x_start = x_start;
+    conf.x_end   = x_end+1;
+    conf.y_start = y_start;
+    conf.y_end   = y_end+1;
+    render();
 }
 
 void set_texture() {
-    alloc_tex();
-
     if (conf.width == 0 || conf.height == 0)
         return;
 
     int block_width  = floor(conf.width / (float)THREADS);
     int block_height = floor(conf.height / (float)THREADS);
 
-    pthread_t thrids[THREADS]        = {};
-    struct mandel_args args[THREADS] = {};
+    struct task *tasks =
+        malloc(THREADS * THREADS * sizeof(struct task));
+
     for (int i = 0; i < THREADS; i++) {
         for (int j = 0; j < THREADS; j++) {
-            args[j].conf  = &conf;
-            args[j].xmin  = block_width * i;
-            args[j].xmax  = block_width * (i + 1) - 1;
-            args[j].ymin  = block_height * j;
-            args[j].ymax  = block_height * (j + 1) - 1;
-
-            pthread_create(&thrids[j], NULL, (void *)calc_mandel, &args[j]);
+            tasks[(THREADS * i) + j].xmin = block_width * i;
+            tasks[(THREADS * i) + j].xmax = block_width * (i + 1) - 1;
+            tasks[(THREADS * i) + j].ymin = block_height * j;
+            tasks[(THREADS * i) + j].ymax = block_height * (j + 1) - 1;
         }
-
-        for (int t = 0; t < THREADS; t++)
-            pthread_join(thrids[t], NULL);
     }
 
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, conf.texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, conf.width, conf.height, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, conf.tex);
+    pthread_t thrids[THREADS] = {};
+    WorkQueue *wq             = workQueue_new();
+    struct thread_args args   = {.conf         = &conf,
+                                 .mutex        = &mutex,
+                                 .result_mutex = &result_mutex,
+                                 .tasks        = tasks,
+                                 .done         = &result_done,
+                                 .wq           = &wq,
+                                 .total_tasks  = THREADS * THREADS};
+    for (int t = 0; t < THREADS; t++)
+        pthread_create(&thrids[t], NULL, (void *)calc_mandel, &args);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    int total_tasks    = THREADS * THREADS;
+    int complete_tasks = 0;
+    struct result *result;
+    while (1) {
+        pthread_mutex_lock(&result_mutex);
+        while (wq->c == NULL)
+            pthread_cond_wait(&result_done, &result_mutex);
+        result = workQueue_pop(&wq);
+        draw_texture(result->tex, result->xmin, result->xmax, result->ymin,
+                      result->ymax);
+        pthread_mutex_unlock(&result_mutex);
+        free(result->tex);
+        free(result);
+        if (++complete_tasks == total_tasks)
+            break;
+    }
 
-    render();
+    free(tasks);
 }
 
 void keypress(unsigned char key, int x, int y) {
-    keypress_handler(&conf, key, x, y, set_texture, screen_dump);
+    keypress_handler(&conf, key, x, y, set_texture);
 }
 
 void mouseclick(int button, int state, int x, int y) {
@@ -152,6 +160,9 @@ void init_gfx(GLConfig *conf, int *c, char **v) {
 }
 
 int main(int argc, char **argv) {
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&result_done, NULL);
+    pthread_mutex_init(&result_mutex, NULL);
     init_gfx(&conf, &argc, argv);
     printf("keys:\n\tr: color rotation\n\tc: monochrome\n\ts: screen dump\n\t"
            "<, >: decrease/increase max iteration\n\tq: quit\n\tmouse buttons "

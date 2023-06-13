@@ -7,6 +7,20 @@
       "-Iinclude",
       "-o",
       "fractal",
+      "src/calculations.c"
+    ],
+    "directory": "/home/matbme/Projects/PAD-GB",
+    "file": "/home/matbme/Projects/PAD-GB/src/calculations.c",
+    "output": "/home/matbme/Projects/PAD-GB/fractal"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-g",
+      "-Iinclude",
+      "-o",
+      "fractal",
       "src/controls.c"
     ],
     "directory": "/home/matbme/Projects/PAD-GB",
