@@ -8,8 +8,8 @@ WorkQueue *workQueue_new() {
     return wq;
 }
 
-void workQueue_push(WorkQueue *wq, void *restrict val) {
-    WorkQueue *w = wq;
+void workQueue_push(WorkQueue **wq, void *restrict val) {
+    WorkQueue *w = *wq;
     while (w->c != NULL)
         w = w->next;
     w->next = workQueue_new();

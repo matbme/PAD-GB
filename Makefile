@@ -7,13 +7,21 @@ SDIR = src
 SOURCES := $(wildcard $(SDIR)/*.c)
 OBJECTS := $(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SOURCES))
 
+ifeq ($(PREFIX),)
+    PREFIX := /usr/local
+endif
+
 fractal: $(OBJECTS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 $(ODIR)/%.o: $(SOURCES)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: clean
+.PHONY: install
+install: fractal
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	cp $< $(DESTDIR)$(PREFIX)/bin/fractal
 
+.PHONY: clean
 clean:
-	-rm -rfv fractal fractal.dSYM
+	rm -rfv fractal fractal.dSYM

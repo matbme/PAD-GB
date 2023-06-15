@@ -9,7 +9,7 @@ void calc_mandel(struct thread_args *args) {
 
     while (1) {
         struct task *task = malloc(sizeof(struct task));
-        int found_task            = 0;
+        int found_task    = 0;
         pthread_mutex_lock(args->mutex);
         for (int i = 0; i < args->total_tasks; i++) {
             if (IS_TASK(args->tasks[i])) {
@@ -74,13 +74,13 @@ void calc_mandel(struct thread_args *args) {
         }
 
         struct result *result = malloc(sizeof(struct result));
-        result->tex                  = ltex;
-        result->xmin                 = task->xmin;
-        result->xmax                 = task->xmax;
-        result->ymin                 = task->ymin;
-        result->ymax                 = task->ymax;
+        result->tex           = ltex;
+        result->xmin          = task->xmin;
+        result->xmax          = task->xmax;
+        result->ymin          = task->ymin;
+        result->ymax          = task->ymax;
         pthread_mutex_lock(args->result_mutex);
-        workQueue_push(*args->wq, result);
+        workQueue_push(args->wq, result);
         pthread_cond_signal(args->done);
         pthread_mutex_unlock(args->result_mutex);
 

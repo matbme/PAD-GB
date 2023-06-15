@@ -9,21 +9,20 @@
 #include "controls.h"
 #include "types.h"
 
-#define THREADS 8
-
 void render();
 void set_texture();
-void draw_texture(
-    unsigned char *tex, int x_start, int x_end, int y_start, int y_end);
+void draw_texture(struct result *result);
 void mouseclick(int button, int state, int x, int y);
 void keypress(unsigned char key, int x, int y);
 void special_keypress(int key, int x, int y);
 
-int old_width, old_height;
+int THREADS;
 
 pthread_mutex_t mutex;
-pthread_cond_t result_done;
 pthread_mutex_t result_mutex;
+pthread_cond_t result_done;
+
+int old_width, old_height;
 
 GLConfig conf = {.scale        = 1. / 256,
                  .cx           = -2.9,
@@ -55,22 +54,22 @@ void render() {
     glFinish();
 }
 
-void draw_texture(
-    unsigned char *tex, int x_start, int x_end, int y_start, int y_end) {
+void draw_texture(struct result *result) {
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, conf.texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x_end - x_start + 1,
-                 y_end - y_start + 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, result->xmax - result->xmin + 1,
+                 result->ymax - result->ymin + 1, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 result->tex);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     glEnable(GL_TEXTURE_2D);
 
-    conf.x_start = x_start;
-    conf.x_end   = x_end+1;
-    conf.y_start = y_start;
-    conf.y_end   = y_end+1;
+    conf.x_start = result->xmin;
+    conf.x_end   = result->xmax + 1;
+    conf.y_start = result->ymin;
+    conf.y_end   = result->ymax + 1;
     render();
 }
 
@@ -81,9 +80,7 @@ void set_texture() {
     int block_width  = floor(conf.width / (float)THREADS);
     int block_height = floor(conf.height / (float)THREADS);
 
-    struct task *tasks =
-        malloc(THREADS * THREADS * sizeof(struct task));
-
+    struct task *tasks = malloc(THREADS * THREADS * sizeof(struct task));
     for (int i = 0; i < THREADS; i++) {
         for (int j = 0; j < THREADS; j++) {
             tasks[(THREADS * i) + j].xmin = block_width * i;
@@ -93,15 +90,15 @@ void set_texture() {
         }
     }
 
-    pthread_t thrids[THREADS] = {};
-    WorkQueue *wq             = workQueue_new();
-    struct thread_args args   = {.conf         = &conf,
-                                 .mutex        = &mutex,
-                                 .result_mutex = &result_mutex,
-                                 .tasks        = tasks,
-                                 .done         = &result_done,
-                                 .wq           = &wq,
-                                 .total_tasks  = THREADS * THREADS};
+    pthread_t *thrids       = malloc(THREADS * sizeof(pthread_t *));
+    WorkQueue *wq           = workQueue_new();
+    struct thread_args args = {.conf         = &conf,
+                               .mutex        = &mutex,
+                               .result_mutex = &result_mutex,
+                               .tasks        = tasks,
+                               .done         = &result_done,
+                               .wq           = &wq,
+                               .total_tasks  = THREADS * THREADS};
     for (int t = 0; t < THREADS; t++)
         pthread_create(&thrids[t], NULL, (void *)calc_mandel, &args);
 
@@ -112,16 +109,19 @@ void set_texture() {
         pthread_mutex_lock(&result_mutex);
         while (wq->c == NULL)
             pthread_cond_wait(&result_done, &result_mutex);
+
         result = workQueue_pop(&wq);
-        draw_texture(result->tex, result->xmin, result->xmax, result->ymin,
-                      result->ymax);
+        draw_texture(result);
         pthread_mutex_unlock(&result_mutex);
         free(result->tex);
         free(result);
+
         if (++complete_tasks == total_tasks)
             break;
     }
 
+    free(wq);
+    free(thrids);
     free(tasks);
 }
 
@@ -166,10 +166,15 @@ void init_gfx(GLConfig *conf, int *c, char **v) {
 }
 
 int main(int argc, char **argv) {
+    THREADS = atoi(argv[1]);
+
     pthread_mutex_init(&mutex, NULL);
     pthread_cond_init(&result_done, NULL);
     pthread_mutex_init(&result_mutex, NULL);
+
     init_gfx(&conf, &argc, argv);
+
+    printf("Using %d threads.\n", THREADS);
     printf("keys:\n\tr: color rotation\n\tc: monochrome\n\ts: screen dump\n\t"
            "<, >: decrease/increase max iteration\n\tq: quit\n\tmouse buttons "
            "to zoom\n");

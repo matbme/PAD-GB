@@ -23,17 +23,7 @@ typedef struct _WorkQueue {
 } WorkQueue;
 
 WorkQueue *workQueue_new();
-void workQueue_push(WorkQueue *wq, void *restrict val);
+void workQueue_push(WorkQueue **wq, void *restrict val);
 void *restrict workQueue_pop(WorkQueue **wq);
-
-typedef struct _ThreadConfig {
-    int max_threads;
-    /* TODO: Render strategy:
-     *   - Squares with same size
-     *   - Squares with fixed size
-     *   - Lines
-     *   - As whole image (calculate in parallel, display all at once)
-     */
-} ThreadConfig;
 
 #endif
