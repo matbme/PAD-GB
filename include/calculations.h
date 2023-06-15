@@ -7,7 +7,7 @@
 
 #include "types.h"
 
-#define VAL 255
+#define BRIGHTNESS 255
 
 #define IS_TASK(t) \
     (t.xmin == -1 && t.xmax == -1 && t.ymin == -1 && t.ymax == -1 ? 0 : 1)

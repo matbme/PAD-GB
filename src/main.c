@@ -175,9 +175,9 @@ int main(int argc, char **argv) {
     init_gfx(&conf, &argc, argv);
 
     printf("Using %d threads.\n", THREADS);
-    printf("keys:\n\tr: color rotation\n\tc: monochrome\n\ts: screen dump\n\t"
+    printf("keys:\n\tr: color rotation\n\tc: monochrome\n\t"
            "<, >: decrease/increase max iteration\n\tq: quit\n\tmouse buttons "
-           "to zoom\n");
+           "to zoom\n\tarrow keys: move around ");
 
     glutMainLoop();
     return 0;

@@ -105,7 +105,7 @@ void hsv_to_rgba(GLConfig *conf, int hue, int min, int max, unsigned char *px) {
     } else {
         double h = fmod(
             conf->color_rotate + 1e-4 + 4.0 * (hue - min) / (max - min), 6);
-        double c = VAL * conf->saturation;
+        double c = BRIGHTNESS * conf->saturation;
         double X = c * (1 - fabs(fmod(h, 2) - 1));
 
         r = 0;
